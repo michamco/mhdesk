@@ -216,12 +216,37 @@ table.inv td{padding:2.6mm 3mm;border-bottom:.4pt solid #e4e4e4;vertical-align:t
 .spine .s-title{font-weight:800;text-align:center;line-height:1.15;word-break:break-word}
 .spine .s-sub{text-align:center;color:#444;margin-top:2mm}
 
-/* Aufkleber / Sticker */
+/* Register / Trennblätter */
+.reg-sheet{background:#fff;width:210mm;height:297mm;margin:0 auto 8mm;box-shadow:0 20px 60px -20px rgba(0,0,0,.6);position:relative;overflow:hidden;color:#111}
+.reg-cutframe{position:absolute;inset:6mm;border:.5pt dashed #c4c4c4;pointer-events:none}
+/* Deckblatt */
+.reg-cover{padding:26mm 22mm}
+.reg-cover .rc-title{font-family:var(--serif);font-size:26pt;font-weight:700;letter-spacing:.4px;color:#111;margin-bottom:2mm}
+.reg-cover .rc-sub{font-size:11pt;color:#555;margin-bottom:12mm;border-bottom:2pt solid var(--acc,#c9a24b);padding-bottom:5mm;display:inline-block}
+.reg-toc{list-style:none;font-size:12.5pt}
+.reg-toc li{display:flex;align-items:center;gap:5mm;padding:3.2mm 0;border-bottom:.4pt solid #e2e2e2}
+.reg-toc .num{width:11mm;height:11mm;flex:0 0 auto;border-radius:6px;background:var(--acc,#c9a24b);color:#20170a;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:12pt}
+.reg-toc .nm{font-weight:600;color:#111}
+.reg-cover .rc-foot{position:absolute;bottom:16mm;left:22mm;right:22mm;font-size:8.5pt;color:#888;border-top:.5pt solid #ccc;padding-top:3mm;display:flex;justify-content:space-between}
+/* Trennblatt mit gestufter Lasche rechts */
+.reg-divider{padding:20mm 22mm}
+.reg-divider .rd-big{font-family:var(--serif);font-size:40pt;font-weight:700;color:#eee;position:absolute;left:22mm;top:26mm;line-height:1}
+.reg-divider .rd-name{position:absolute;left:22mm;top:64mm;font-size:22pt;font-weight:700;color:#111}
+.reg-divider .rd-of{position:absolute;left:22mm;top:80mm;font-size:11pt;color:#777}
+.reg-tab{position:absolute;right:0;width:26mm;min-height:20mm;background:var(--acc,#c9a24b);color:#20170a;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5mm;
+  border-radius:8px 0 0 8px;padding:4mm 3mm;box-shadow:-1pt 0 0 rgba(0,0,0,.08)}
+.reg-tab .t-num{font-size:16pt;font-weight:800;line-height:1}
+.reg-tab .t-name{font-size:9pt;font-weight:700;text-align:center;line-height:1.15;word-break:break-word}
+.reg-tab-cut{position:absolute;right:26mm;top:0;bottom:0;border-left:.5pt dashed #999}
+.reg-hint-badge{position:absolute;bottom:14mm;left:22mm;font-size:8pt;color:#999}
+
+
 .label-sheet{background:#fff;padding:8mm;width:210mm;min-height:297mm;margin:0 auto;box-shadow:0 20px 60px -20px rgba(0,0,0,.6);display:grid;gap:0}
 .lbl-cell{border:.4pt dashed #ccc;padding:6mm 7mm;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
-.lbl-from{font-size:7.5pt;color:#666;border-bottom:.4pt solid #bbb;padding-bottom:1mm;margin-bottom:2.5mm}
-.lbl-to{font-size:11pt;line-height:1.5;font-weight:500}
-.lbl-to .big{font-weight:700;font-size:12pt}
+.lbl-from{font-size:7.5pt;color:#333;border-bottom:.5pt solid #888;padding-bottom:1mm;margin-bottom:2.5mm}
+.lbl-to{font-size:11pt;line-height:1.55;font-weight:600;color:#000}
+.lbl-to .big{font-weight:800;font-size:12.5pt;color:#000}
 
 /* Chips / lists */
 .doclist{display:flex;flex-direction:column;gap:8px}
@@ -306,6 +331,7 @@ table.inv td{padding:2.6mm 3mm;border-bottom:.4pt solid #e4e4e4;vertical-align:t
       <button data-v="brief" class="on"><span class="ic">✉️</span>Brief</button>
       <button data-v="rechnung"><span class="ic">🧾</span>Rechnung</button>
       <button data-v="ruecken"><span class="ic">📚</span>Ordnerrücken</button>
+      <button data-v="register"><span class="ic">🗂️</span>Register / Trennblätter</button>
       <button data-v="aufkleber"><span class="ic">🏷️</span>Adress-Aufkleber</button>
       <button data-v="profile"><span class="ic">🏢</span>Firmenprofile</button>
       <button data-v="settings"><span class="ic">⚙️</span>Einstellungen</button>
@@ -397,6 +423,7 @@ const VIEWS={
   brief:{t:'Brief erstellen',s:'DIN-5008-konform · direkt druckfertig'},
   rechnung:{t:'Rechnung',s:'Fortlaufende Nummern · lokal gespeichert'},
   ruecken:{t:'Ordnerrücken',s:'Beschriften, drucken, ausschneiden, einstecken'},
+  register:{t:'Register / Trennblätter',s:'Deckblatt + gestufte Reiter zum Ausschneiden'},
   aufkleber:{t:'Adress-Aufkleber',s:'Absender & Empfänger übernehmen · sofort drucken'},
   profile:{t:'Firmenprofile',s:'Logo & Stammdaten für Briefe und Rechnungen'},
   settings:{t:'Einstellungen',s:'Passwort, Nummernkreis, Datensicherung'},
@@ -414,7 +441,7 @@ function render(){
   document.getElementById('viewActions').innerHTML='';
   const el=document.getElementById('view');
   el.innerHTML='';
-  ({brief:renderBrief,rechnung:renderRechnung,ruecken:renderRuecken,
+  ({brief:renderBrief,rechnung:renderRechnung,ruecken:renderRuecken,register:renderRegister,
     aufkleber:renderAufkleber,profile:renderProfile,settings:renderSettings}[currentView])();
 }
 /* ==================================================================
@@ -566,7 +593,7 @@ function saveProfile(id,isNew){
    ================================================================== */
 let briefState={
   recipient:'', subject:'', body:'', date:todayDE(),
-  ref:'', yourRef:'', showInfoBlock:true
+  ref:'', yourRef:'', showInfoBlock:true, showHeader:null
 };
 function renderBrief(){
   const el=document.getElementById('view');
@@ -575,6 +602,8 @@ function renderBrief(){
     `<button class="btn" onclick="saveLetter()">💾 Speichern</button>
      <button class="btn primary" onclick="printDoc('briefPaper')">🖨️ Drucken / PDF</button>`;
   if(!p){el.innerHTML=noProfileMsg('Brief');return}
+  // Standard für Briefkopf: Firma zeigt Kopf, privat nicht — bis der Nutzer selbst wählt
+  if(briefState.showHeader===null) briefState.showHeader = (p.type!=='private');
   el.innerHTML=`
   <div class="split">
     <div class="panel-col">
@@ -591,6 +620,7 @@ function renderBrief(){
           <div><label>Unser Zeichen</label><input id="b_ref" data-focus="info" value="${esc(briefState.ref)}" placeholder="—"></div></div>
         <div class="field"><label>Brieftext</label>
           <textarea id="b_body" data-focus="body" style="min-height:200px" placeholder="Sehr geehrte Frau Mustermann,\n\n…\n\nMit freundlichen Grüßen">${esc(briefState.body)}</textarea></div>
+        <div class="field"><label><input type="checkbox" id="b_header" ${briefState.showHeader?'checked':''} style="width:auto;margin-right:6px"> Briefkopf oben anzeigen (Logo bzw. Firmenname)</label></div>
         <div class="field"><label><input type="checkbox" id="b_info" ${briefState.showInfoBlock?'checked':''} style="width:auto;margin-right:6px"> Info-Block (Tel./E-Mail/Web) rechts anzeigen</label></div>
       </div>
       <div class="hintbar" style="margin-top:14px">📮 <b>Aufkleber-Position:</b> Bei DIN-lang-Umschlägen klebt der Adressaufkleber ins <b>linke obere Drittel</b> der Vorderseite (ca. 40 mm von oben, 20 mm von links) — dort, wo bei Fensterumschlägen das Sichtfenster sitzt. <b>Nicht</b> unten rechts: dort ist die Frankierzone für die Briefmarke.</div>
@@ -607,6 +637,7 @@ function renderBrief(){
   ['b_rec','b_date','b_subject','b_yref','b_ref','b_body'].forEach(id=>
     el.querySelector('#'+id).addEventListener('input',syncBrief));
   el.querySelector('#b_info').addEventListener('change',syncBrief);
+  el.querySelector('#b_header').addEventListener('change',syncBrief);
   drawBrief();
   wireFocusZoom('briefPaper');
 }
@@ -618,6 +649,7 @@ function syncBrief(){
   briefState.ref=document.getElementById('b_ref').value;
   briefState.body=document.getElementById('b_body').value;
   briefState.showInfoBlock=document.getElementById('b_info').checked;
+  briefState.showHeader=document.getElementById('b_header').checked;
   drawBrief();
 }
 function logoBlock(p,cls){
@@ -636,10 +668,10 @@ function drawBrief(){
     </div>`:'';
   document.getElementById('briefPaper').innerHTML=`
   <div class="a4" style="--brand-accent:${p.accent};display:flex;flex-direction:column">
-    <div class="br-head">
+    ${s.showHeader?`<div class="br-head">
       ${logoBlock(p,'br-logo')}
       <div class="br-sender-r"><b>${esc(p.name)}</b><br>${esc(p.street)}<br>${esc(p.zip+' '+p.city)}</div>
-    </div>
+    </div>`:'<div style="height:8mm"></div>'}
     <div class="br-addr-block" data-region="recipient">
       <div class="br-return">${esc(senderLine)}</div>
       <div class="br-recipient">${nl2(s.recipient)||'<span style="color:#bbb">Empfängeranschrift…</span>'}</div>
@@ -651,7 +683,6 @@ function drawBrief(){
     <div class="br-foot">
       <div><b>${esc(p.name)}</b>${p.ceo?esc(p.ceo)+'<br>':''}${esc(p.street)}<br>${esc(p.zip+' '+p.city)}</div>
       <div><b>Kontakt</b>${p.phone?'Tel. '+esc(p.phone)+'<br>':''}${esc(p.email)}<br>${esc(p.web)}</div>
-      <div><b>Bank</b>${esc(p.bankName)}<br>${p.iban?'IBAN '+esc(p.iban):''}${p.bic?'<br>BIC '+esc(p.bic):''}</div>
       ${(p.ustid||p.register)?`<div><b>Register</b>${p.register?esc(p.register)+'<br>':''}${p.ustid?'USt-IdNr. '+esc(p.ustid):''}</div>`:''}
     </div>
   </div>`;
@@ -922,6 +953,131 @@ function drawSpine(){
 }
 
 /* ==================================================================
+   REGISTER / TRENNBLÄTTER
+   ================================================================== */
+let regState={
+  title:'Register', sub:'', accent:'#c9a24b', numberStyle:'num',
+  showCover:true, tabHeight:24,
+  tabs:['Rechnungen','Verträge','Korrespondenz','Belege','Sonstiges']
+};
+function regLabel(i){
+  if(regState.numberStyle==='alpha') return String.fromCharCode(65+(i%26));
+  if(regState.numberStyle==='none') return '';
+  return String(i+1);
+}
+function renderRegister(){
+  const el=document.getElementById('view');
+  const p=activeProfile();
+  document.getElementById('viewActions').innerHTML=`<button class="btn primary" onclick="printDoc('regPaper')">🖨️ Alles drucken</button>`;
+  if(regState.accent==='#c9a24b'&&p&&p.accent) regState.accent=p.accent;
+  el.innerHTML=`
+  <div class="split">
+    <div class="panel-col">
+      <div class="card">
+        <h3>Register-Titel</h3>
+        <div class="field"><label>Titel (Deckblatt)</label><input id="rg_title" value="${esc(regState.title)}" placeholder="Register 2026"></div>
+        <div class="field"><label>Untertitel (optional)</label><input id="rg_sub" value="${esc(regState.sub)}" placeholder="M.H. Immobilien · Ordner 1"></div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h3>Reiter</h3>
+        <div id="rg_tabs"></div>
+        <button class="btn sm" style="margin-top:8px" onclick="regAddTab()">+ Reiter hinzufügen</button>
+        <div style="font-size:12px;color:var(--muted);margin-top:10px">Die Reiter erscheinen als gestufte Laschen am rechten Rand — von oben nach unten, damit alle sichtbar bleiben.</div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h3>Darstellung</h3>
+        <div class="field"><label>Nummerierung der Reiter</label>
+          <select id="rg_numstyle">
+            <option value="num">1, 2, 3 …</option>
+            <option value="alpha">A, B, C …</option>
+            <option value="none">ohne Nummer</option>
+          </select></div>
+        <div class="field row"><div><label>Deckblatt (Inhaltsverzeichnis)</label>
+          <select id="rg_cover"><option value="1">mit Deckblatt</option><option value="0">ohne</option></select></div>
+          <div><label>Laschenhöhe (mm)</label><input id="rg_tabh" type="number" min="16" max="40" value="${regState.tabHeight}"></div></div>
+        <div class="field row"><div><label>Akzentfarbe</label><input id="rg_accent" type="color" value="${regState.accent}" style="height:42px"></div><div></div></div>
+      </div>
+      <div class="hintbar" style="margin-top:14px">✂️ Jedes Trennblatt drucken, die Lasche entlang der gestrichelten Linie ausschneiden (der schmale Streifen daneben wird entfernt). Übereinandergelegt bilden die Laschen eine Treppe — wie gekaufte Register.</div>
+    </div>
+    <div class="previewwrap">
+      <div class="preview-toolbar noprint"><span>Vorschau · Deckblatt + ${regState.tabs.length} Trennblätter <span class="zoomchip" id="zoomchip_regPaper" style="margin-left:6px">Ganzes Blatt</span></span>
+        <button class="btn sm" onclick="preview_reset('regPaper')">Ganzes Blatt</button></div>
+      <div class="paper-shell"><div class="paper-stage"><div id="regPaper"></div></div></div>
+    </div>
+  </div>`;
+  document.getElementById('rg_numstyle').value=regState.numberStyle;
+  document.getElementById('rg_cover').value=regState.showCover?'1':'0';
+  drawRegTabs();
+  ['rg_title','rg_sub','rg_tabh','rg_accent'].forEach(id=>document.getElementById(id).addEventListener('input',syncReg));
+  ['rg_numstyle','rg_cover'].forEach(id=>document.getElementById(id).addEventListener('change',syncReg));
+  drawRegister();
+  wireFocusZoom('regPaper');
+}
+function drawRegTabs(){
+  const box=document.getElementById('rg_tabs');
+  box.innerHTML=regState.tabs.map((t,i)=>`
+    <div style="display:grid;grid-template-columns:34px 1fr 34px;gap:8px;align-items:center;margin-bottom:8px">
+      <div style="text-align:center;font-weight:700;color:var(--brass-hi)">${regLabel(i)||'•'}</div>
+      <input value="${esc(t)}" placeholder="Reiter-Name" oninput="regEditTab(${i},this.value)">
+      <button class="del" onclick="regDelTab(${i})">×</button>
+    </div>`).join('');
+}
+function regEditTab(i,v){regState.tabs[i]=v;drawRegister()}
+function regAddTab(){regState.tabs.push('Neuer Reiter');drawRegTabs();drawRegister();document.querySelector('.preview-toolbar span').innerHTML=`Vorschau · Deckblatt + ${regState.tabs.length} Trennblätter <span class="zoomchip" id="zoomchip_regPaper" style="margin-left:6px">Ganzes Blatt</span>`}
+function regDelTab(i){regState.tabs.splice(i,1);if(!regState.tabs.length)regState.tabs.push('Reiter 1');drawRegTabs();drawRegister()}
+function syncReg(){
+  regState.title=document.getElementById('rg_title').value;
+  regState.sub=document.getElementById('rg_sub').value;
+  regState.tabHeight=Math.max(16,Math.min(40,+document.getElementById('rg_tabh').value));
+  regState.accent=document.getElementById('rg_accent').value;
+  regState.numberStyle=document.getElementById('rg_numstyle').value;
+  regState.showCover=document.getElementById('rg_cover').value==='1';
+  drawRegTabs();
+  drawRegister();
+}
+function drawRegister(){
+  const s=regState;const p=activeProfile();
+  const n=s.tabs.length;
+  let sheets='';
+  // Deckblatt
+  if(s.showCover){
+    const toc=s.tabs.map((t,i)=>`<li><span class="num">${regLabel(i)||(i+1)}</span><span class="nm">${esc(t)||'—'}</span></li>`).join('');
+    sheets+=`<div class="reg-sheet" style="--acc:${s.accent}">
+      <div class="reg-cutframe"></div>
+      <div class="reg-cover">
+        <div class="rc-title">${esc(s.title)||'Register'}</div>
+        <div class="rc-sub">${esc(s.sub)||(p?esc(p.name):'')}</div>
+        <ul class="reg-toc">${toc}</ul>
+        <div class="rc-foot"><span>${p?esc(p.name):''}</span><span>${esc(todayDE())}</span></div>
+      </div>
+    </div>`;
+  }
+  // Trennblätter mit gestufter Lasche
+  const px_top=30, px_bot=30; // mm Rand oben/unten für Laschenbereich
+  const usable=297-px_top-px_bot;
+  s.tabs.forEach((t,i)=>{
+    // vertikale Position der Lasche: gleichmäßig verteilt von oben nach unten
+    const slot = n>1 ? px_top + (usable-s.tabHeight)*(i/(n-1)) : px_top + (usable-s.tabHeight)/2;
+    sheets+=`<div class="reg-sheet" style="--acc:${s.accent}">
+      <div class="reg-cutframe"></div>
+      <div class="reg-divider">
+        <div class="rd-big">${regLabel(i)||''}</div>
+        <div class="rd-name">${esc(t)||'—'}</div>
+        <div class="rd-of">${s.title?esc(s.title)+' · ':''}Blatt ${i+1} von ${n}</div>
+      </div>
+      <div class="reg-tab-cut"></div>
+      <div class="reg-tab" style="top:${slot}mm;height:${s.tabHeight}mm">
+        ${regLabel(i)?`<span class="t-num">${regLabel(i)}</span>`:''}
+        <span class="t-name">${esc(t)||''}</span>
+      </div>
+      <div class="reg-hint-badge">✂ Lasche ausschneiden · schmalen Streifen rechts entfernen</div>
+    </div>`;
+  });
+  document.getElementById('regPaper').innerHTML=sheets;
+  reapplyScale('regPaper');
+}
+
+/* ==================================================================
    ADRESS-AUFKLEBER / STICKER
    ================================================================== */
 let labelState={to:'',from:'',showFrom:true,cols:2,rows:5,repeat:false,bigFirst:true};
@@ -948,7 +1104,7 @@ function renderAufkleber(){
           <div><label>Zeilen</label><input id="l_rows" type="number" min="1" max="8" value="${labelState.rows}"></div></div>
         <div class="field"><label><input type="checkbox" id="l_repeat" ${labelState.repeat?'checked':''} style="width:auto;margin-right:6px"> Ganzen Bogen mit derselben Adresse füllen</label></div>
       </div>
-      <div class="hintbar" style="margin-top:14px">Passt auf gängige Etikettenbögen (z. B. 2×5). Ohne Etikettenbogen einfach auf normalem Papier drucken und ausschneiden.</div>
+      <div class="hintbar" style="margin-top:14px">📮 <b>Wohin kleben?</b> Bei DIN-lang-Umschlägen den Aufkleber ins <b>linke obere Drittel</b> der Vorderseite setzen (ca. 40 mm von oben, 20 mm von links). <b>Nicht</b> oben rechts — dort ist Platz für die Briefmarke.<br><br>Passt auf gängige Etikettenbögen (z. B. 2×5). Ohne Etikettenbogen einfach auf Papier drucken und ausschneiden.</div>
     </div>
     <div class="previewwrap">
       <div class="preview-toolbar noprint"><span>Vorschau · Etikettenbogen <span class="zoomchip" id="zoomchip_labelPaper" style="margin-left:6px">Ganzes Blatt</span></span>
