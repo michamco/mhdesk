@@ -147,7 +147,12 @@ input,textarea,select{font-family:inherit}
 .previewwrap{position:sticky;top:96px}
 .preview-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .preview-toolbar span{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-.paper-shell{background:#39424c;border:1px solid var(--line);border-radius:12px;padding:24px;overflow:auto;max-height:78vh}
+.paper-shell{background:#39424c;border:1px solid var(--line);border-radius:12px;padding:20px;overflow:auto;max-height:80vh;scroll-behavior:smooth}
+.paper-stage{position:relative;margin:0 auto;transition:width .35s ease,height .35s ease}
+.paper-stage>div{transform-origin:top left;transition:transform .35s ease}
+.zoomchip{font-size:11px;color:var(--muted);background:#10161b;border:1px solid var(--line);border-radius:20px;padding:3px 10px}
+.focus-flash{outline:2px solid var(--brass);outline-offset:2px;animation:focusfade 1.1s ease forwards}
+@keyframes focusfade{0%{outline-color:var(--brass)}100%{outline-color:transparent}}
 
 /* ============ PAPER / DIN A4 ============ */
 .a4{
@@ -204,7 +209,7 @@ table.inv td{padding:2.6mm 3mm;border-bottom:.4pt solid #e4e4e4;vertical-align:t
 
 /* Ordnerrücken */
 .spine-sheet{background:#fff;padding:12mm;width:210mm;min-height:297mm;margin:0 auto;box-shadow:0 20px 60px -20px rgba(0,0,0,.6)}
-.spine{display:flex;flex-direction:column;align-items:center;justify-content:space-between;border:.5pt dashed #bbb;overflow:hidden;color:#111;margin:0 auto 6mm;padding:6mm 4mm}
+.spine{display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;color:#111;margin:0 auto 6mm}
 .spine .s-top,.spine .s-bot{text-align:center;width:100%}
 .spine .s-logo img{max-width:80%;max-height:20mm;object-fit:contain}
 .spine .s-logo .txt{font-weight:700;font-size:11pt}
@@ -248,11 +253,16 @@ table.inv td{padding:2.6mm 3mm;border-bottom:.4pt solid #e4e4e4;vertical-align:t
 .hintbar{font-size:12px;color:var(--muted);background:#151d24;border:1px solid var(--line);border-left:3px solid var(--brass);padding:10px 14px;border-radius:8px;margin-bottom:18px;line-height:1.55}
 
 /* Print */
+/* Farben in ALLEN Papier-Elementen exakt drucken (Goldstreifen, Flächen etc.) */
+.a4,.spine-sheet,.label-sheet,.a4 *,.spine-sheet *,.label-sheet *{
+  -webkit-print-color-adjust:exact !important;
+  print-color-adjust:exact !important;
+}
 /* Druck läuft über printDoc() in einem sauberen neuen Fenster.
    Diese Regeln sind ein Fallback, falls direkt Strg+P gedrückt wird. */
 @media print{
   @page{margin:0;size:A4}
-  body{background:#fff}
+  body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .noprint{display:none !important}
   .paper-shell{background:none;border:none;padding:0;max-height:none;overflow:visible}
   .previewwrap{position:static}
@@ -378,6 +388,7 @@ const nl2 = s => esc(s).replace(/\n/g,'<br>');
 const euro = n => (Number(n)||0).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
 const todayDE = () => new Date().toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric'});
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const clone = o => (typeof structuredClone==='function') ? structuredClone(o) : JSON.parse(JSON.stringify(o));
 function activeProfile(){return DB.profiles.find(p=>p.id===DB.activeProfile)||DB.profiles[0]||null}
 
 /* ---------- Router ---------- */
@@ -410,7 +421,7 @@ function render(){
    FIRMENPROFILE
    ================================================================== */
 function blankProfile(){return{
-  id:uid(),name:'',logo:'',useTextLogo:true,accent:'#c9a24b',
+  id:uid(),type:'business',name:'',logo:'',useTextLogo:true,accent:'#c9a24b',
   street:'',zip:'',city:'',phone:'',email:'',web:'',
   ceo:'',register:'',ustid:'',taxno:'',
   bankName:'',iban:'',bic:''
@@ -436,7 +447,7 @@ function renderProfile(){
           ${p.logo&&!p.useTextLogo?`<img src="${p.logo}" style="height:34px;max-width:90px;object-fit:contain;background:#fff;border-radius:6px;padding:3px">`
             :`<div style="width:34px;height:34px;border-radius:8px;background:${p.accent};display:grid;place-items:center;color:#20170a;font-weight:800">${esc((p.name||'?')[0])}</div>`}
           <div><b style="font-size:15px">${esc(p.name||'Ohne Name')}</b>
-          <span style="display:block;font-size:12px;color:var(--muted)">${esc(p.city||'')}</span></div>
+          <span style="display:block;font-size:12px;color:var(--muted)">${p.type==='private'?'👤 Privat':'🏢 Geschäftlich'}${p.city?' · '+esc(p.city):''}</span></div>
         </div>
         ${on?'<span class="badge">aktiv</span>':''}
       </div>
@@ -457,39 +468,71 @@ function renderProfile(){
 function setActive(id){DB.activeProfile=id;save('activeProfile');toast('Aktives Profil gesetzt',1);render()}
 function delProfile(id){if(!confirm('Profil wirklich löschen?'))return;DB.profiles=DB.profiles.filter(p=>p.id!==id);if(DB.activeProfile===id)DB.activeProfile=DB.profiles[0]?.id||null;save('profiles');save('activeProfile');render()}
 function newProfile(){openProfileForm(blankProfile(),true)}
-function editProfile(id){openProfileForm(structuredClone(DB.profiles.find(p=>p.id===id)),false)}
+function editProfile(id){openProfileForm(clone(DB.profiles.find(p=>p.id===id)),false)}
 function openProfileForm(p,isNew){
   const el=document.getElementById('view');
   document.getElementById('viewActions').innerHTML='';
+  const isPriv=p.type==='private';
   el.innerHTML=`<div style="max-width:760px">
     <div class="card">
+      <h3>Art des Profils</h3>
+      <div class="seg" id="pf_typeseg">
+        <button type="button" class="${!isPriv?'on':''}" onclick="pfSetType('business')">🏢 Geschäftlich</button>
+        <button type="button" class="${isPriv?'on':''}" onclick="pfSetType('private')">👤 Privat</button>
+      </div>
+      <div class="hintbar" style="margin-top:12px" id="pf_typehint">${isPriv
+        ? 'Privates Profil: nur Name, Adresse und Kontakt. Kein Logo, keine Website, keine Bank- oder Steuerangaben — trotzdem sauberes, professionelles Layout.'
+        : 'Geschäftliches Profil: mit Logo, Website, Bankverbindung und Rechtsangaben für Rechnungen.'}</div>
+      <input type="hidden" id="pf_type" value="${isPriv?'private':'business'}">
+    </div>
+    <div class="card" style="margin-top:16px">
       <h3>Stammdaten</h3>
-      <div class="field"><label>Firmen- / Absendername</label><input id="pf_name" value="${esc(p.name)}" placeholder="M.H. Immobilien"></div>
+      <div class="field"><label id="pf_namelbl">${isPriv?'Vor- und Nachname':'Firmen- / Absendername'}</label><input id="pf_name" value="${esc(p.name)}" placeholder="${isPriv?'Max Mustermann':'M.H. Immobilien'}"></div>
       <div class="field row"><div><label>Straße & Nr.</label><input id="pf_street" value="${esc(p.street)}"></div>
         <div class="field row" style="margin:0"><div><label>PLZ</label><input id="pf_zip" value="${esc(p.zip)}"></div><div><label>Ort</label><input id="pf_city" value="${esc(p.city)}"></div></div></div>
       <div class="field row"><div><label>Telefon</label><input id="pf_phone" value="${esc(p.phone)}"></div><div><label>E-Mail</label><input id="pf_email" value="${esc(p.email)}"></div></div>
-      <div class="field"><label>Website</label><input id="pf_web" value="${esc(p.web)}" placeholder="www.mhimmobilien.com"></div>
+      <div class="field pf-biz"><label>Website</label><input id="pf_web" value="${esc(p.web)}" placeholder="www.mhimmobilien.com"></div>
     </div>
-    <div class="card" style="margin-top:16px">
+    <div class="card pf-biz" style="margin-top:16px">
       <h3>Logo & Farbe</h3>
       <div class="field"><label>Logo hochladen (PNG/JPG/SVG)</label><input type="file" id="pf_logofile" accept="image/*" onchange="pfLogo(this)"></div>
       <div id="pf_logoprev" style="margin:6px 0 12px">${p.logo?`<img src="${p.logo}" style="height:44px;background:#fff;padding:4px;border-radius:6px">`:'<span style="color:var(--muted);font-size:12px">Kein Logo — es wird der Name als Text-Logo verwendet.</span>'}</div>
       <div class="field"><label><input type="checkbox" id="pf_usetext" ${p.useTextLogo?'checked':''} style="width:auto;margin-right:6px"> Namen als Text-Logo verwenden (statt Bild)</label></div>
       <div class="field row"><div><label>Akzentfarbe</label><input type="color" id="pf_accent" value="${p.accent}" style="height:42px"></div><div></div></div>
     </div>
-    <div class="card" style="margin-top:16px">
+    <div class="card pf-biz" style="margin-top:16px">
       <h3>Rechtsangaben & Bank (für Rechnungen)</h3>
       <div class="field row"><div><label>Inhaber / Geschäftsführer</label><input id="pf_ceo" value="${esc(p.ceo)}"></div><div><label>Handelsregister</label><input id="pf_register" value="${esc(p.register)}" placeholder="HRB 12345"></div></div>
       <div class="field row"><div><label>USt-IdNr.</label><input id="pf_ustid" value="${esc(p.ustid)}" placeholder="DE123456789"></div><div><label>Steuernummer</label><input id="pf_taxno" value="${esc(p.taxno)}"></div></div>
       <div class="field"><label>Bank</label><input id="pf_bankName" value="${esc(p.bankName)}"></div>
       <div class="field row"><div><label>IBAN</label><input id="pf_iban" value="${esc(p.iban)}"></div><div><label>BIC</label><input id="pf_bic" value="${esc(p.bic)}"></div></div>
     </div>
+    <div class="card pf-priv" style="margin-top:16px">
+      <h3>Farbe</h3>
+      <div class="field row"><div><label>Akzentfarbe (Linien & Betonung)</label><input type="color" id="pf_accent_priv" value="${p.accent}" style="height:42px"></div><div></div></div>
+    </div>
     <div style="display:flex;gap:10px;margin-top:18px">
       <button class="btn primary" onclick="saveProfile('${p.id}',${isNew})">Speichern</button>
-      <button class="btn ghost" onclick="render()">Abbrechen</button>
+      <button class="btn ghost" onclick="currentView='profile';render()">Abbrechen</button>
     </div>
   </div>`;
   el._logoData=p.logo;
+  pfApplyType(isPriv?'private':'business');
+}
+function pfSetType(t){
+  document.getElementById('pf_type').value=t;
+  document.querySelectorAll('#pf_typeseg button').forEach((b,i)=>b.classList.toggle('on',(i===0)===(t==='business')));
+  const priv=t==='private';
+  document.getElementById('pf_typehint').textContent=priv
+    ? 'Privates Profil: nur Name, Adresse und Kontakt. Kein Logo, keine Website, keine Bank- oder Steuerangaben — trotzdem sauberes, professionelles Layout.'
+    : 'Geschäftliches Profil: mit Logo, Website, Bankverbindung und Rechtsangaben für Rechnungen.';
+  document.getElementById('pf_namelbl').textContent=priv?'Vor- und Nachname':'Firmen- / Absendername';
+  pfApplyType(t);
+}
+function pfApplyType(t){
+  const priv=t==='private';
+  document.querySelectorAll('.pf-biz').forEach(e=>e.style.display=priv?'none':'');
+  document.querySelectorAll('.pf-priv').forEach(e=>e.style.display=priv?'':'none');
 }
 function pfLogo(input){
   const f=input.files[0];if(!f)return;
@@ -501,12 +544,18 @@ function pfLogo(input){
 }
 function saveProfile(id,isNew){
   const g=x=>document.getElementById('pf_'+x);
-  const p={id,name:g('name').value.trim(),logo:document.getElementById('view')._logoData||'',
-    useTextLogo:g('usetext').checked,accent:g('accent').value,
+  const type=g('type').value;
+  const priv=type==='private';
+  const p={id,type,name:g('name').value.trim(),
+    logo:priv?'':(document.getElementById('view')._logoData||''),
+    useTextLogo:priv?true:g('usetext').checked,
+    accent:priv?g('accent_priv').value:g('accent').value,
     street:g('street').value.trim(),zip:g('zip').value.trim(),city:g('city').value.trim(),
-    phone:g('phone').value.trim(),email:g('email').value.trim(),web:g('web').value.trim(),
-    ceo:g('ceo').value.trim(),register:g('register').value.trim(),ustid:g('ustid').value.trim(),
-    taxno:g('taxno').value.trim(),bankName:g('bankName').value.trim(),iban:g('iban').value.trim(),bic:g('bic').value.trim()};
+    phone:g('phone').value.trim(),email:g('email').value.trim(),
+    web:priv?'':g('web').value.trim(),
+    ceo:priv?'':g('ceo').value.trim(),register:priv?'':g('register').value.trim(),
+    ustid:priv?'':g('ustid').value.trim(),taxno:priv?'':g('taxno').value.trim(),
+    bankName:priv?'':g('bankName').value.trim(),iban:priv?'':g('iban').value.trim(),bic:priv?'':g('bic').value.trim()};
   if(!p.name){toast('Bitte einen Namen eingeben');return}
   if(isNew){DB.profiles.push(p);if(!DB.activeProfile)DB.activeProfile=p.id}
   else{const i=DB.profiles.findIndex(x=>x.id===id);DB.profiles[i]=p}
@@ -532,30 +581,34 @@ function renderBrief(){
       <div class="card">
         <h3>Empfänger</h3>
         <div class="field"><label>Anschrift (Name, Straße, PLZ Ort — je Zeile)</label>
-          <textarea id="b_rec" placeholder="Frau\nErika Mustermann\nMusterstraße 12\n67059 Ludwigshafen">${esc(briefState.recipient)}</textarea></div>
+          <textarea id="b_rec" data-focus="recipient" placeholder="Frau\nErika Mustermann\nMusterstraße 12\n67059 Ludwigshafen">${esc(briefState.recipient)}</textarea></div>
       </div>
       <div class="card" style="margin-top:14px">
         <h3>Inhalt</h3>
-        <div class="field row"><div><label>Datum</label><input id="b_date" value="${esc(briefState.date)}"></div>
-          <div><label>Betreff-Zeile</label><input id="b_subject" value="${esc(briefState.subject)}" placeholder="Ihre Anfrage vom …"></div></div>
-        <div class="field row"><div><label>Ihr Zeichen</label><input id="b_yref" value="${esc(briefState.yourRef)}" placeholder="—"></div>
-          <div><label>Unser Zeichen</label><input id="b_ref" value="${esc(briefState.ref)}" placeholder="—"></div></div>
+        <div class="field row"><div><label>Datum</label><input id="b_date" data-focus="date" value="${esc(briefState.date)}"></div>
+          <div><label>Betreff-Zeile</label><input id="b_subject" data-focus="subject" value="${esc(briefState.subject)}" placeholder="Ihre Anfrage vom …"></div></div>
+        <div class="field row"><div><label>Ihr Zeichen</label><input id="b_yref" data-focus="info" value="${esc(briefState.yourRef)}" placeholder="—"></div>
+          <div><label>Unser Zeichen</label><input id="b_ref" data-focus="info" value="${esc(briefState.ref)}" placeholder="—"></div></div>
         <div class="field"><label>Brieftext</label>
-          <textarea id="b_body" style="min-height:200px" placeholder="Sehr geehrte Frau Mustermann,\n\n…\n\nMit freundlichen Grüßen">${esc(briefState.body)}</textarea></div>
+          <textarea id="b_body" data-focus="body" style="min-height:200px" placeholder="Sehr geehrte Frau Mustermann,\n\n…\n\nMit freundlichen Grüßen">${esc(briefState.body)}</textarea></div>
         <div class="field"><label><input type="checkbox" id="b_info" ${briefState.showInfoBlock?'checked':''} style="width:auto;margin-right:6px"> Info-Block (Tel./E-Mail/Web) rechts anzeigen</label></div>
       </div>
-      <div class="hintbar" style="margin-top:14px">Tipp: Fenster­umschlag DIN lang — die Empfänger­anschrift sitzt exakt im Sichtfenster.</div>
+      <div class="hintbar" style="margin-top:14px">📮 <b>Aufkleber-Position:</b> Bei DIN-lang-Umschlägen klebt der Adressaufkleber ins <b>linke obere Drittel</b> der Vorderseite (ca. 40 mm von oben, 20 mm von links) — dort, wo bei Fensterumschlägen das Sichtfenster sitzt. <b>Nicht</b> unten rechts: dort ist die Frankierzone für die Briefmarke.</div>
     </div>
     <div class="previewwrap">
       <div class="preview-toolbar noprint"><span>Vorschau · DIN A4</span>
-        <div class="seg"><button onclick="zoomPaper('briefPaper',-1)">−</button><button onclick="zoomPaper('briefPaper',1)">+</button></div></div>
-      <div class="paper-shell"><div id="briefPaper"></div></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="zoomchip" id="zoomchip_briefPaper">Ganzes Blatt</span>
+          <button class="btn sm" onclick="preview_reset('briefPaper')">Ganzes Blatt</button>
+        </div></div>
+      <div class="paper-shell"><div class="paper-stage"><div id="briefPaper"></div></div></div>
     </div>
   </div>`;
   ['b_rec','b_date','b_subject','b_yref','b_ref','b_body'].forEach(id=>
     el.querySelector('#'+id).addEventListener('input',syncBrief));
   el.querySelector('#b_info').addEventListener('change',syncBrief);
   drawBrief();
+  wireFocusZoom('briefPaper');
 }
 function syncBrief(){
   briefState.recipient=document.getElementById('b_rec').value;
@@ -587,14 +640,14 @@ function drawBrief(){
       ${logoBlock(p,'br-logo')}
       <div class="br-sender-r"><b>${esc(p.name)}</b><br>${esc(p.street)}<br>${esc(p.zip+' '+p.city)}</div>
     </div>
-    <div class="br-addr-block">
+    <div class="br-addr-block" data-region="recipient">
       <div class="br-return">${esc(senderLine)}</div>
       <div class="br-recipient">${nl2(s.recipient)||'<span style="color:#bbb">Empfängeranschrift…</span>'}</div>
     </div>
-    ${info}
-    <div class="br-date">${esc(p.city?p.city+', den ':'')}${esc(s.date)}</div>
-    ${s.subject?`<div class="br-subject">${esc(s.subject)}</div>`:''}
-    <div class="br-body">${nl2(s.body)||'<span style="color:#bbb">Brieftext…</span>'}</div>
+    <div data-region="info">${info}</div>
+    <div class="br-date" data-region="date">${esc(p.city?p.city+', den ':'')}${esc(s.date)}</div>
+    ${s.subject?`<div class="br-subject" data-region="subject">${esc(s.subject)}</div>`:'<div data-region="subject"></div>'}
+    <div class="br-body" data-region="body">${nl2(s.body)||'<span style="color:#bbb">Brieftext…</span>'}</div>
     <div class="br-foot">
       <div><b>${esc(p.name)}</b>${p.ceo?esc(p.ceo)+'<br>':''}${esc(p.street)}<br>${esc(p.zip+' '+p.city)}</div>
       <div><b>Kontakt</b>${p.phone?'Tel. '+esc(p.phone)+'<br>':''}${esc(p.email)}<br>${esc(p.web)}</div>
@@ -602,11 +655,18 @@ function drawBrief(){
       ${(p.ustid||p.register)?`<div><b>Register</b>${p.register?esc(p.register)+'<br>':''}${p.ustid?'USt-IdNr. '+esc(p.ustid):''}</div>`:''}
     </div>
   </div>`;
+  reapplyScale('briefPaper');
+}
+/* nach jedem Redraw die zuletzt gewählte Skalierung erneut anwenden (kein Springen) */
+function reapplyScale(id){
+  const doc=paperDoc(id);if(!doc)return;
+  const prev=doc.parentElement&&doc.parentElement._lastScale;
+  if(prev){applyScale(id,prev)}
 }
 function saveLetter(){
   syncBrief();
   const rec=(briefState.recipient.split('\n').filter(Boolean).slice(0,2).join(', '))||'Ohne Empfänger';
-  DB.letters.unshift({id:uid(),date:new Date().toISOString(),rec,subject:briefState.subject,state:structuredClone(briefState),profile:DB.activeProfile});
+  DB.letters.unshift({id:uid(),date:new Date().toISOString(),rec,subject:briefState.subject,state:clone(briefState),profile:DB.activeProfile});
   save('letters');toast('Brief gespeichert',1);
 }
 /* ==================================================================
@@ -660,18 +720,20 @@ function invTab(which){
       </div>
     </div>
     <div class="previewwrap">
-      <div class="preview-toolbar noprint"><span>Vorschau · Rechnung</span>
+      <div class="preview-toolbar noprint"><span>Vorschau · Rechnung <span class="zoomchip" id="zoomchip_invPaper" style="margin-left:6px">Ganzes Blatt</span></span>
         <div style="display:flex;gap:8px">
-          <button class="btn sm" onclick="commitInvoice()">✓ Festschreiben & speichern</button>
+          <button class="btn sm" onclick="preview_reset('invPaper')">Ganzes Blatt</button>
+          <button class="btn sm" onclick="commitInvoice()">✓ Festschreiben</button>
           <button class="btn sm primary" onclick="printDoc('invPaper')">🖨️</button>
         </div></div>
-      <div class="paper-shell"><div id="invPaper"></div></div>
+      <div class="paper-shell"><div class="paper-stage"><div id="invPaper"></div></div></div>
     </div>
   </div>`;
   drawInvItems();
   ['i_num','i_date','i_rec','i_vat','i_due','i_pay','i_note'].forEach(id=>el.querySelector('#'+id).addEventListener('input',syncInv));
   el.querySelector('#i_klein').addEventListener('change',()=>{invState.kleinunternehmer=document.getElementById('i_klein').checked;invTab('new')});
   drawInvoice();
+  wireFocusZoom('invPaper');
 }
 function drawInvItems(){
   const box=document.getElementById('i_items');
@@ -742,6 +804,7 @@ function drawInvoice(){
       <div><b>Steuer</b>${p.taxno?'St.-Nr. '+esc(p.taxno)+'<br>':''}${p.ustid?'USt-IdNr. '+esc(p.ustid):''}</div>
     </div>
   </div>`;
+  reapplyScale('invPaper');
 }
 function commitInvoice(){
   syncInv();
@@ -749,7 +812,7 @@ function commitInvoice(){
   const t=invTotals();
   const wasNew=!invState.committed && invState.number===DB.invPrefix+String(DB.invCounter).padStart(4,'0');
   const rec=DB.invoices.findIndex(x=>x.id===invState.id);
-  const saved={...structuredClone(invState),committed:true,gross:t.gross,savedAt:new Date().toISOString(),profile:DB.activeProfile};
+  const saved={...clone(invState),committed:true,gross:t.gross,savedAt:new Date().toISOString(),profile:DB.activeProfile};
   if(rec>=0)DB.invoices[rec]=saved; else DB.invoices.unshift(saved);
   if(wasNew){DB.invCounter++;save('invCounter')}
   save('invoices');
@@ -771,12 +834,12 @@ function renderInvList(){
       </div></div>`).join('')+`</div>`;
 }
 function invToggleState(id){const iv=DB.invoices.find(x=>x.id===id);iv.state=iv.state==='paid'?'open':'paid';save('invoices');renderInvList()}
-function invOpen(id){invState=structuredClone(DB.invoices.find(x=>x.id===id));document.getElementById('inv_tab_new').classList.add('on');document.getElementById('inv_tab_list').classList.remove('on');invTab('new');toast('Rechnung geladen — „Festschreiben" speichert Änderungen')}
+function invOpen(id){invState=clone(DB.invoices.find(x=>x.id===id));document.getElementById('inv_tab_new').classList.add('on');document.getElementById('inv_tab_list').classList.remove('on');invTab('new');toast('Rechnung geladen — „Festschreiben" speichert Änderungen')}
 function invDel(id){if(!confirm('Rechnung löschen?'))return;DB.invoices=DB.invoices.filter(x=>x.id!==id);save('invoices');renderInvList()}
 /* ==================================================================
    ORDNERRÜCKEN
    ================================================================== */
-let spineState={width:60,title:'',sub:'',count:2,logo:'',useLogo:false,accent:'#c9a24b',
+let spineState={width:54,title:'',sub:'',count:2,logo:'',useLogo:false,accent:'#c9a24b',
   bandTop:true,fontSize:22};
 function renderRuecken(){
   const el=document.getElementById('view');
@@ -793,10 +856,10 @@ function renderRuecken(){
         <h3>Format</h3>
         <div class="field"><label>Rückenbreite</label>
           <select id="sp_width">
-            <option value="35">Schmal (35 mm)</option>
-            <option value="50">Mittel (50 mm)</option>
-            <option value="60" selected>Breit (60 mm)</option>
-            <option value="75">Extra-breit (75 mm)</option>
+            <option value="34">Schmal-Ordner (34 mm)</option>
+            <option value="46">Mittel (46 mm)</option>
+            <option value="54" selected>Breit-Ordner (54 mm)</option>
+            <option value="68">Extra-breit (68 mm)</option>
           </select></div>
         <div class="field row"><div><label>Anzahl auf Blatt</label><input id="sp_count" type="number" min="1" max="6" value="${spineState.count}"></div>
           <div><label>Schriftgröße (pt)</label><input id="sp_fs" type="number" value="${spineState.fontSize}"></div></div>
@@ -812,8 +875,9 @@ function renderRuecken(){
       <div class="hintbar" style="margin-top:14px">Drucken → ausschneiden entlang der gestrichelten Linie → in den Ordnerrücken einstecken. Die Breite passt zu Standard-Aktenordnern (schmal/breit).</div>
     </div>
     <div class="previewwrap">
-      <div class="preview-toolbar noprint"><span>Vorschau · A4-Bogen</span></div>
-      <div class="paper-shell"><div id="spinePaper"></div></div>
+      <div class="preview-toolbar noprint"><span>Vorschau · A4-Bogen <span class="zoomchip" id="zoomchip_spinePaper" style="margin-left:6px">Ganzes Blatt</span></span>
+        <button class="btn sm" onclick="preview_reset('spinePaper')">Ganzes Blatt</button></div>
+      <div class="paper-shell"><div class="paper-stage"><div id="spinePaper"></div></div></div>
     </div>
   </div>`;
   document.getElementById('sp_width').value=spineState.width;
@@ -823,6 +887,7 @@ function renderRuecken(){
     document.getElementById(id).addEventListener(ev,syncSpine);
   });
   drawSpine();
+  wireFocusZoom('spinePaper');
 }
 function spLogo(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{spineState.logo=e.target.result;document.getElementById('sp_uselogo').checked=true;syncSpine()};r.readAsDataURL(f)}
 function syncSpine(){
@@ -842,16 +907,18 @@ function drawSpine(){
     :(p?`<div class="s-logo"><div class="txt">${esc(p.name)}</div></div>`:'');
   let spines='';
   for(let i=0;i<s.count;i++){
-    spines+=`<div class="spine" style="width:${s.width}mm;height:${297/s.count-8}mm;--acc:${s.accent}">
-      ${s.bandTop?`<div style="height:6mm;width:100%;background:${s.accent}"></div>`:'<div></div>'}
-      <div class="s-top">${topHtml}</div>
-      <div class="s-title" style="font-size:${s.fontSize}pt;color:#111">${esc(s.title)||'Titel'}</div>
-      <div class="s-sub" style="font-size:${Math.max(9,s.fontSize*0.42)}pt">${esc(s.sub)}</div>
-      <div class="s-bot"></div>
-      ${s.bandTop?`<div style="height:6mm;width:100%;background:${s.accent}"></div>`:'<div></div>'}
+    spines+=`<div class="spine" style="width:${s.width}mm;height:${297/s.count-8}mm;--acc:${s.accent};border:.6pt solid #999;padding:0;overflow:hidden">
+      ${s.bandTop?`<div style="height:7mm;width:100%;background:${s.accent}"></div>`:''}
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2mm;padding:4mm 3mm;width:100%">
+        <div class="s-top">${topHtml}</div>
+        <div class="s-title" style="font-size:${s.fontSize}pt;color:#000">${esc(s.title)||'Titel'}</div>
+        <div class="s-sub" style="font-size:${Math.max(9,s.fontSize*0.42)}pt;color:#222">${esc(s.sub)}</div>
+      </div>
+      ${s.bandTop?`<div style="height:7mm;width:100%;background:${s.accent}"></div>`:''}
     </div>`;
   }
   document.getElementById('spinePaper').innerHTML=`<div class="spine-sheet">${spines}</div>`;
+  reapplyScale('spinePaper');
 }
 
 /* ==================================================================
@@ -884,8 +951,9 @@ function renderAufkleber(){
       <div class="hintbar" style="margin-top:14px">Passt auf gängige Etikettenbögen (z. B. 2×5). Ohne Etikettenbogen einfach auf normalem Papier drucken und ausschneiden.</div>
     </div>
     <div class="previewwrap">
-      <div class="preview-toolbar noprint"><span>Vorschau · Etikettenbogen</span></div>
-      <div class="paper-shell"><div id="labelPaper"></div></div>
+      <div class="preview-toolbar noprint"><span>Vorschau · Etikettenbogen <span class="zoomchip" id="zoomchip_labelPaper" style="margin-left:6px">Ganzes Blatt</span></span>
+        <button class="btn sm" onclick="preview_reset('labelPaper')">Ganzes Blatt</button></div>
+      <div class="paper-shell"><div class="paper-stage"><div id="labelPaper"></div></div></div>
     </div>
   </div>`;
   if(p&&!labelState.from)labelState.from=[p.name,p.street,(p.zip+' '+p.city).trim()].filter(Boolean).join(', ');
@@ -893,6 +961,7 @@ function renderAufkleber(){
   ['l_to','l_from','l_cols','l_rows'].forEach(id=>document.getElementById(id).addEventListener('input',syncLabel));
   ['l_showfrom','l_repeat'].forEach(id=>document.getElementById(id).addEventListener('change',syncLabel));
   drawLabel();
+  wireFocusZoom('labelPaper');
 }
 function pullFromBrief(){
   if(briefState.recipient){labelState.to=briefState.recipient;document.getElementById('l_to').value=briefState.recipient;syncLabel();toast('Empfänger übernommen',1)}
@@ -919,6 +988,7 @@ function drawLabel(){
   }
   document.getElementById('labelPaper').innerHTML=
     `<div class="label-sheet" style="grid-template-columns:repeat(${s.cols},1fr);grid-auto-rows:${(281/s.rows).toFixed(1)}mm">${cells}</div>`;
+  reapplyScale('labelPaper');
 }
 
 /* ==================================================================
@@ -982,14 +1052,90 @@ function importData(input){
 function noProfileMsg(what){return `<div class="empty"><div class="big">🏢</div>
   <p>Für ${what}e brauchst du zuerst ein Firmenprofil.</p>
   <button class="btn primary" style="margin-top:16px" onclick="currentView='profile';document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==='profile'));render()">Profil anlegen</button></div>`}
-function zoomPaper(id,dir){const p=document.getElementById(id).firstElementChild;const cur=parseFloat(p.dataset.z||'1');const z=Math.max(.5,Math.min(1.4,cur+dir*.1));p.dataset.z=z;p.style.transform='scale('+z+')'}
+/* ---------- Preview-Engine: Auto-Fit ganzes Blatt + Fokus-Zoom ---------- */
+const previewMode={}; // id -> 'fit' | 'focus'
+function paperEl(id){return document.getElementById(id)}
+function paperDoc(id){const s=paperEl(id);return s?s.querySelector('.a4,.spine-sheet,.label-sheet'):null}
+function getShell(id){const el=paperEl(id);return el?el.closest('.paper-shell'):null}
+function mmToPx(){const d=document.createElement('div');d.style.cssText='width:100mm;position:absolute;visibility:hidden';document.body.appendChild(d);const px=d.getBoundingClientRect().width/100;d.remove();return px}
+/* skaliert das Dokument so, dass es ganz in die Shell passt */
+function fitPaper(id){
+  const shell=getShell(id),doc=paperDoc(id);if(!shell||!doc)return;
+  previewMode[id]='fit';
+  const px=mmToPx();
+  const docW=210*px, docH=doc.getBoundingClientRect().height/(parseFloat(doc.dataset.scale||1));
+  const availW=shell.clientWidth-40, availH=shell.clientHeight-40;
+  const scale=Math.min(availW/docW, availH/(297*px), 1);
+  applyScale(id,scale);
+  shell.scrollTo({top:0,left:0,behavior:'auto'});
+  updateZoomChip(id,scale,'Ganzes Blatt');
+}
+function applyScale(id,scale){
+  const doc=paperDoc(id);if(!doc)return;
+  const px=mmToPx();
+  doc.dataset.scale=scale;
+  doc.style.transform='scale('+scale+')';
+  // Stage-Größe an skaliertes Dokument anpassen, damit Scrollbereich stimmt
+  const stage=doc.parentElement;
+  if(stage&&stage.classList.contains('paper-stage')){
+    stage._lastScale=scale;
+    stage.style.width=(210*px*scale)+'px';
+    stage.style.height=(doc.getBoundingClientRect().height)+'px';
+  }
+}
+/* zoomt auf einen benannten Bereich (Element mit data-region im Dokument) */
+function focusRegion(id,region){
+  const shell=getShell(id),doc=paperDoc(id);if(!shell||!doc||!region)return;
+  const target=doc.querySelector('[data-region="'+region+'"]');
+  if(!target){return}
+  previewMode[id]='focus';
+  const px=mmToPx();
+  const availW=shell.clientWidth-40;
+  // Zielskalierung: Bereich ~ Shell-Breite füllen, gedeckelt
+  const targScale=Math.min(Math.max(availW/(210*px), .6), 1.15);
+  applyScale(id,targScale);
+  // nach dem Skalieren zur Zielposition scrollen
+  requestAnimationFrame(()=>{
+    const tRect=target.getBoundingClientRect();
+    const sRect=shell.getBoundingClientRect();
+    const top=shell.scrollTop+(tRect.top-sRect.top)-30;
+    shell.scrollTo({top:Math.max(0,top),behavior:'smooth'});
+    target.classList.remove('focus-flash');void target.offsetWidth;target.classList.add('focus-flash');
+  });
+  updateZoomChip(id,targScale,'Bereich');
+}
+function updateZoomChip(id,scale,label){
+  const chip=document.getElementById('zoomchip_'+id);
+  if(chip)chip.textContent=label+' · '+Math.round(scale*100)+'%';
+}
+/* verdrahtet Eingabefelder: focus -> zoom auf zugehörigen Bereich, blur/idle -> zurück zu fit */
+function wireFocusZoom(previewId){
+  const view=document.getElementById('view');
+  view.querySelectorAll('[data-focus]').forEach(inp=>{
+    inp.addEventListener('focus',()=>focusRegion(previewId,inp.dataset.focus));
+  });
+  // "Ganzes Blatt"-Button + initial fit
+  requestAnimationFrame(()=>fitPaper(previewId));
+  // bei Fenstergröße neu einpassen wenn im fit-Modus
+  if(!view._resizeWired){
+    view._resizeWired=true;
+    window.addEventListener('resize',()=>{const id=view.dataset.pv;if(id&&previewMode[id]==='fit')fitPaper(id)});
+  }
+  view.dataset.pv=previewId;
+}
+function preview_reset(id){fitPaper(id)}
 function printDoc(id){
   const node=document.getElementById(id);
   if(!node||!node.firstElementChild){toast('Nichts zu drucken');return}
   const w=window.open('','_print','width=900,height=1200');
   const css=[...document.querySelectorAll('style')].map(s=>s.innerHTML).join('\n');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Drucken</title><style>${css}
-    body{background:#fff}@page{margin:0;size:A4}.a4,.spine-sheet,.label-sheet{box-shadow:none;margin:0 auto;transform:none!important}</style></head>
+    html,body{background:#fff;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+    *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+    @page{margin:0;size:A4}
+    .a4,.spine-sheet,.label-sheet{box-shadow:none !important;margin:0 auto;transform:none !important}
+    .a4{transform:none !important}
+    </style></head>
     <body>${node.innerHTML}</body></html>`);
   w.document.close();
   setTimeout(()=>{w.focus();w.print();},350);
