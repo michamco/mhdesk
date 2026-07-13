@@ -870,7 +870,7 @@ function invDel(id){if(!confirm('Rechnung löschen?'))return;DB.invoices=DB.invo
 /* ==================================================================
    ORDNERRÜCKEN
    ================================================================== */
-let spineState={width:54,title:'',sub:'',count:2,logo:'',useLogo:false,accent:'#c9a24b',
+let spineState={width:54,length:192,title:'',sub:'',count:2,logo:'',useLogo:false,accent:'#c9a24b',
   bandTop:true,fontSize:22};
 function renderRuecken(){
   const el=document.getElementById('view');
@@ -892,6 +892,13 @@ function renderRuecken(){
             <option value="54" selected>Breit-Ordner (54 mm)</option>
             <option value="68">Extra-breit (68 mm)</option>
           </select></div>
+        <div class="field"><label>Rückenlänge</label>
+          <select id="sp_length">
+            <option value="150">Kurz (150 mm)</option>
+            <option value="192" selected>Standard (192 mm)</option>
+            <option value="200">Lang (200 mm)</option>
+            <option value="285">Durchgehend / volle Höhe (285 mm)</option>
+          </select></div>
         <div class="field row"><div><label>Anzahl nebeneinander</label><input id="sp_count" type="number" min="1" max="3" value="${spineState.count}"></div>
           <div><label>Schriftgröße (pt)</label><input id="sp_fs" type="number" value="${spineState.fontSize}"></div></div>
         <div class="field row"><div><label>Farbband</label>
@@ -912,9 +919,10 @@ function renderRuecken(){
     </div>
   </div>`;
   document.getElementById('sp_width').value=spineState.width;
+  document.getElementById('sp_length').value=spineState.length;
   document.getElementById('sp_band').value=spineState.bandTop?'1':'0';
-  ['sp_title','sp_sub','sp_width','sp_count','sp_fs','sp_band','sp_accent','sp_uselogo'].forEach(id=>{
-    const ev=(id==='sp_width'||id==='sp_band'||id==='sp_uselogo')?'change':'input';
+  ['sp_title','sp_sub','sp_width','sp_length','sp_count','sp_fs','sp_band','sp_accent','sp_uselogo'].forEach(id=>{
+    const ev=(id==='sp_width'||id==='sp_length'||id==='sp_band'||id==='sp_uselogo')?'change':'input';
     document.getElementById(id).addEventListener(ev,syncSpine);
   });
   drawSpine();
@@ -925,6 +933,7 @@ function syncSpine(){
   spineState.title=document.getElementById('sp_title').value;
   spineState.sub=document.getElementById('sp_sub').value;
   spineState.width=+document.getElementById('sp_width').value;
+  spineState.length=+document.getElementById('sp_length').value;
   spineState.count=Math.max(1,Math.min(3,+document.getElementById('sp_count').value));
   spineState.fontSize=+document.getElementById('sp_fs').value;
   spineState.bandTop=document.getElementById('sp_band').value==='1';
@@ -937,9 +946,10 @@ function drawSpine(){
   const topHtml=(s.useLogo&&s.logo)?`<div class="s-logo"><img src="${s.logo}"></div>`
     :(p?`<div class="s-logo"><div class="txt">${esc(p.name)}</div></div>`:'');
   let spines='';
+  const longSpine = s.length>=250;
   for(let i=0;i<s.count;i++){
-    spines+=`<div class="spine" style="width:${s.width}mm;height:285mm;--acc:${s.accent};border:.6pt solid #999;padding:0">
-      <div class="s-grip">↑ Ausziehlasche ↑</div>
+    spines+=`<div class="spine" style="width:${s.width}mm;height:${s.length}mm;--acc:${s.accent};border:.6pt solid #999;padding:0">
+      ${longSpine?'<div class="s-grip">↑ Ausziehlasche ↑</div>':''}
       ${s.bandTop?`<div style="height:7mm;width:100%;background:${s.accent}"></div>`:''}
       <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2mm;padding:4mm 3mm;width:100%">
         <div class="s-top">${topHtml}</div>
@@ -947,7 +957,7 @@ function drawSpine(){
         <div class="s-sub" style="font-size:${Math.max(9,s.fontSize*0.42)}pt;color:#222">${esc(s.sub)}</div>
       </div>
       ${s.bandTop?`<div style="height:7mm;width:100%;background:${s.accent}"></div>`:''}
-      <div class="s-grip" style="border-bottom:none;border-top:.4pt dashed #ccc">↓ Ausziehlasche ↓</div>
+      ${longSpine?'<div class="s-grip" style="border-bottom:none;border-top:.4pt dashed #ccc">↓ Ausziehlasche ↓</div>':''}
     </div>`;
   }
   document.getElementById('spinePaper').innerHTML=`<div class="spine-sheet">${spines}</div>`;
@@ -1079,7 +1089,7 @@ function drawRegister(){
 /* ==================================================================
    ADRESS-AUFKLEBER / STICKER
    ================================================================== */
-let labelState={to:'',from:'',showFrom:true,cols:2,rows:5,repeat:false,bigFirst:true};
+let labelState={to:'',from:'',showFrom:true,cols:2,rows:5,fillMode:'first',selected:{},bigFirst:true};
 function renderAufkleber(){
   const el=document.getElementById('view');
   const p=activeProfile();
@@ -1101,9 +1111,23 @@ function renderAufkleber(){
         <h3>Bogen-Layout</h3>
         <div class="field row"><div><label>Spalten</label><input id="l_cols" type="number" min="1" max="3" value="${labelState.cols}"></div>
           <div><label>Zeilen</label><input id="l_rows" type="number" min="1" max="8" value="${labelState.rows}"></div></div>
-        <div class="field"><label><input type="checkbox" id="l_repeat" ${labelState.repeat?'checked':''} style="width:auto;margin-right:6px"> Ganzen Bogen mit derselben Adresse füllen</label></div>
+        <div class="field"><label>Welche Felder bedrucken?</label>
+          <div class="seg" id="l_modeseg" style="width:100%">
+            <button type="button" data-m="first" onclick="labelSetMode('first')">Nur 1. Feld</button>
+            <button type="button" data-m="all" onclick="labelSetMode('all')">Ganzer Bogen</button>
+            <button type="button" data-m="pick" onclick="labelSetMode('pick')">Felder wählen</button>
+          </div>
+        </div>
+        <div class="field" id="l_pickwrap" style="display:none">
+          <label>Felder anklicken (bereits verbrauchte auslassen)</label>
+          <div id="l_pickgrid" style="display:grid;gap:5px;margin-top:4px"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn sm" onclick="labelPickAll(true)">Alle</button>
+            <button class="btn sm" onclick="labelPickAll(false)">Keine</button>
+          </div>
+        </div>
       </div>
-      <div class="hintbar" style="margin-top:14px">📮 <b>Wohin kleben?</b> Bei DIN-lang-Umschlägen den Aufkleber ins <b>linke obere Drittel</b> der Vorderseite setzen (ca. 40 mm von oben, 20 mm von links). <b>Nicht</b> oben rechts — dort ist Platz für die Briefmarke.<br><br>Passt auf gängige Etikettenbögen (z. B. 2×5). Ohne Etikettenbogen einfach auf Papier drucken und ausschneiden.</div>
+      <div class="hintbar" style="margin-top:14px">📮 <b>Wohin kleben?</b> Bei DIN-lang-Umschlägen den Aufkleber ins <b>linke obere Drittel</b> der Vorderseite setzen (ca. 40 mm von oben, 20 mm von links). <b>Nicht</b> oben rechts — dort ist Platz für die Briefmarke.<br><br>💡 <b>Bogen mehrfach nutzen:</b> Mit „Felder wählen" druckst du nur auf noch freie Etiketten — schon verbrauchte Positionen lässt du einfach aus.</div>
     </div>
     <div class="previewwrap">
       <div class="preview-toolbar noprint"><span>Vorschau · Etikettenbogen <span class="zoomchip" id="zoomchip_labelPaper" style="margin-left:6px">Ganzes Blatt</span></span>
@@ -1114,10 +1138,30 @@ function renderAufkleber(){
   if(p&&!labelState.from)labelState.from=[p.name,p.street,(p.zip+' '+p.city).trim()].filter(Boolean).join(', ');
   document.getElementById('l_from').value=labelState.from;
   ['l_to','l_from','l_cols','l_rows'].forEach(id=>document.getElementById(id).addEventListener('input',syncLabel));
-  ['l_showfrom','l_repeat'].forEach(id=>document.getElementById(id).addEventListener('change',syncLabel));
+  document.getElementById('l_showfrom').addEventListener('change',syncLabel);
+  labelSetMode(labelState.fillMode,true);
   drawLabel();
   wireFocusZoom('labelPaper');
 }
+function labelSetMode(m,silent){
+  labelState.fillMode=m;
+  document.querySelectorAll('#l_modeseg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  document.getElementById('l_pickwrap').style.display = m==='pick'?'':'none';
+  if(m==='pick') drawPickGrid();
+  if(!silent) drawLabel();
+}
+function drawPickGrid(){
+  const s=labelState;const total=s.cols*s.rows;const grid=document.getElementById('l_pickgrid');
+  grid.style.gridTemplateColumns=`repeat(${s.cols},1fr)`;
+  let h='';
+  for(let i=0;i<total;i++){
+    const on=s.selected[i]!==false; // default an
+    h+=`<button type="button" onclick="labelToggle(${i})" style="aspect-ratio:1.6;border:1px solid ${on?'var(--brass)':'var(--line)'};background:${on?'rgba(201,162,75,.18)':'#10161b'};color:${on?'var(--brass-hi)':'var(--muted)'};border-radius:7px;font-size:12px;font-weight:600">${i+1}</button>`;
+  }
+  grid.innerHTML=h;
+}
+function labelToggle(i){labelState.selected[i]=!(labelState.selected[i]!==false);drawPickGrid();drawLabel()}
+function labelPickAll(on){const total=labelState.cols*labelState.rows;for(let i=0;i<total;i++)labelState.selected[i]=on;drawPickGrid();drawLabel()}
 function pullFromBrief(){
   if(briefState.recipient){labelState.to=briefState.recipient;document.getElementById('l_to').value=briefState.recipient;syncLabel();toast('Empfänger übernommen',1)}
   else toast('Kein Brief-Empfänger vorhanden');
@@ -1126,20 +1170,26 @@ function syncLabel(){
   labelState.to=document.getElementById('l_to').value;
   labelState.from=document.getElementById('l_from').value;
   labelState.showFrom=document.getElementById('l_showfrom').checked;
-  labelState.cols=Math.max(1,Math.min(3,+document.getElementById('l_cols').value));
-  labelState.rows=Math.max(1,Math.min(8,+document.getElementById('l_rows').value));
-  labelState.repeat=document.getElementById('l_repeat').checked;
+  const newCols=Math.max(1,Math.min(3,+document.getElementById('l_cols').value));
+  const newRows=Math.max(1,Math.min(8,+document.getElementById('l_rows').value));
+  if(newCols!==labelState.cols||newRows!==labelState.rows){labelState.cols=newCols;labelState.rows=newRows;if(labelState.fillMode==='pick')drawPickGrid();}
+  else{labelState.cols=newCols;labelState.rows=newRows;}
   drawLabel();
 }
 function drawLabel(){
-  const s=labelState;const total=s.cols*s.rows;const n=s.repeat?total:1;
+  const s=labelState;const total=s.cols*s.rows;
   const toLines=s.to.split('\n').filter(Boolean);
   const cellInner=`
     ${s.showFrom&&s.from?`<div class="lbl-from">${esc(s.from)}</div>`:''}
     <div class="lbl-to">${toLines.map((l,i)=>i===0&&s.bigFirst?`<span class="big">${esc(l)}</span>`:esc(l)).join('<br>')||'<span style="color:#bbb">Empfänger…</span>'}</div>`;
+  const fill=i=>{
+    if(s.fillMode==='first')return i===0;
+    if(s.fillMode==='all')return true;
+    return s.selected[i]!==false; // pick: default an
+  };
   let cells='';
   for(let i=0;i<total;i++){
-    cells+=`<div class="lbl-cell">${i<n?cellInner:''}</div>`;
+    cells+=`<div class="lbl-cell">${fill(i)?cellInner:''}</div>`;
   }
   document.getElementById('labelPaper').innerHTML=
     `<div class="label-sheet" style="grid-template-columns:repeat(${s.cols},1fr);grid-auto-rows:${(281/s.rows).toFixed(1)}mm">${cells}</div>`;
