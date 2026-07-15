@@ -870,8 +870,33 @@ function invDel(id){if(!confirm('Rechnung löschen?'))return;DB.invoices=DB.invo
 /* ==================================================================
    ORDNERRÜCKEN
    ================================================================== */
-let spineState={width:54,length:192,title:'',sub:'',count:2,logo:'',useLogo:false,accent:'#c9a24b',
+let spineState={width:52,length:192,title:'',sub:'',count:2,logo:'',headMode:'name',icon:'haus',accent:'#c9a24b',
   bandTop:true,fontSize:22};
+/* Icon-Bibliothek: reine SVG-Pfade (drucken scharf, nehmen die Akzentfarbe an) */
+const ICONS={
+  haus:{n:'Haus',d:'M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z'},
+  gebaeude:{n:'Gebäude',d:'M4 22V3h10v6h6v13zM7 6h2v2H7zm4 0h2v2h-2zM7 10h2v2H7zm4 0h2v2h-2zM7 14h2v2H7zm4 0h2v2h-2zm5-1h2v2h-2zm0 4h2v2h-2zM7 18h2v2H7zm4 0h2v2h-2z'},
+  bank:{n:'Bank',d:'M12 2 2 8v2h20V8zM4 12h3v7H4zm6.5 0h3v7h-3zM17 12h3v7h-3zM2 21h20v2H2z'},
+  geld:{n:'Geld',d:'M2 6h20v12H2zm10 2.5A3.5 3.5 0 1 0 15.5 12 3.5 3.5 0 0 0 12 8.5M5 9a2 2 0 0 0 2-2H5zm14 0V7h-2a2 2 0 0 0 2 2M5 15v2h2a2 2 0 0 0-2-2m14 0a2 2 0 0 0-2 2h2z'},
+  vertrag:{n:'Vertrag',d:'M6 2h8l6 6v14H6zm7 1.5V9h5.5zM8 12h8v1.6H8zm0 3.4h8V17H8zm0 3.4h5v1.6H8z'},
+  mann:{n:'Person (m)',d:'M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5m0 2c-4 0-9 2-9 5v3h18v-3c0-3-5-5-9-5'},
+  frau:{n:'Person (w)',d:'M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5m-1 2-4 8h3l1-3v5h2v-5l1 3h3l-4-8z'},
+  team:{n:'Team',d:'M8 11a3.5 3.5 0 1 0-3.5-3.5A3.5 3.5 0 0 0 8 11m8 0a3.5 3.5 0 1 0-3.5-3.5A3.5 3.5 0 0 0 16 11m0 2c-2.7 0-6 1.3-6 3.5V20h12v-3.5c0-2.2-3.3-3.5-6-3.5M8 13c-2.7 0-6 1.3-6 3.5V20h6v-3.5A4 4 0 0 1 9.6 13 12 12 0 0 0 8 13'},
+  telefon:{n:'Telefon',d:'M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.24 11.4 11.4 0 0 0 3.6.58 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.4 11.4 0 0 0 .58 3.6 1 1 0 0 1-.25 1z'},
+  mail:{n:'Post',d:'M2 5h20v14H2zm2 2v.4l8 5 8-5V7H4zm0 2.9V17h16V9.9l-8 5z'},
+  kaffee:{n:'Kaffee',d:'M4 4h14v3h2a3 3 0 0 1 0 6h-2v3a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zm14 5v2h2a1 1 0 0 0 0-2zM2 21h18v2H2z'},
+  auto:{n:'Auto',d:'M5 11l1.6-4.4A2 2 0 0 1 8.5 5h7a2 2 0 0 1 1.9 1.6L19 11h1a1 1 0 0 1 1 1v5h-2v2h-3v-2H8v2H5v-2H3v-5a1 1 0 0 1 1-1zm2.2 0h9.6l-1.1-3.4H8.3zM6.5 13a1.2 1.2 0 1 0 1.2 1.2A1.2 1.2 0 0 0 6.5 13m11 0a1.2 1.2 0 1 0 1.2 1.2A1.2 1.2 0 0 0 17.5 13'},
+  werkzeug:{n:'Werkzeug',d:'M15.7 2a6 6 0 0 0-5.3 8.7L2 19.1 4.9 22l8.4-8.4A6 6 0 0 0 22 8.3a1 1 0 0 0-1.7-.7l-2.6 2.6-2.2-.6-.6-2.2 2.6-2.6A1 1 0 0 0 16.7 2z'},
+  schluessel:{n:'Schlüssel',d:'M14 2a8 8 0 1 0 0 16 8 8 0 0 0 7.4-5H24v-2h-2.6A8 8 0 0 0 14 2m0 3.5A2.5 2.5 0 1 1 11.5 8 2.5 2.5 0 0 1 14 5.5M2 12v6h3v-2h2v-2h2v-2z'},
+  ordner:{n:'Ordner',d:'M2 4h7l2 3h11v13H2zm2 5v9h16V9z'},
+  paragraf:{n:'Paragraf',d:'M13.6 3c2.6 0 4.4 1.4 4.4 3.5 0 1.5-.9 2.5-2.2 3 1.5.6 2.4 1.8 2.4 3.4 0 2.3-2 3.9-4.9 3.9a6 6 0 0 1-3.8-1.2l1-1.9a4.4 4.4 0 0 0 2.7 1c1.4 0 2.4-.7 2.4-1.8s-1-1.8-2.6-1.8h-1.3v-2h1.2c1.4 0 2.3-.6 2.3-1.6S14.4 5 13.3 5a3.8 3.8 0 0 0-2.5 1l-1-1.8A5.9 5.9 0 0 1 13.6 3M8 19h9v2H8z'},
+  kalender:{n:'Kalender',d:'M7 2h2v2h6V2h2v2h3v18H4V4h3zm-1 8v10h12V10zm2 2h3v3H8z'},
+  stern:{n:'Stern',d:'m12 2 3 6.6 7 .8-5.2 4.8 1.4 7L12 17.7 5.8 21.2l1.4-7L2 9.4l7-.8z'},
+};
+function iconSvg(key,color,sizeMm){
+  const ic=ICONS[key];if(!ic)return '';
+  return `<svg viewBox="0 0 24 24" style="width:${sizeMm}mm;height:${sizeMm}mm;display:block" xmlns="http://www.w3.org/2000/svg"><path d="${ic.d}" fill="${color}"/></svg>`;
+}
 function renderRuecken(){
   const el=document.getElementById('view');
   document.getElementById('viewActions').innerHTML=`<button class="btn primary" onclick="printDoc('spinePaper')">🖨️ Drucken</button>`;
@@ -887,10 +912,10 @@ function renderRuecken(){
         <h3>Format</h3>
         <div class="field"><label>Rückenbreite</label>
           <select id="sp_width">
-            <option value="34">Schmal-Ordner (34 mm)</option>
-            <option value="46">Mittel (46 mm)</option>
-            <option value="54" selected>Breit-Ordner (54 mm)</option>
-            <option value="68">Extra-breit (68 mm)</option>
+            <option value="32">Schmal-Ordner (32 mm)</option>
+            <option value="44">Mittel (44 mm)</option>
+            <option value="52" selected>Breit-Ordner (52 mm)</option>
+            <option value="65">Extra-breit (65 mm)</option>
           </select></div>
         <div class="field"><label>Rückenlänge</label>
           <select id="sp_length">
@@ -906,9 +931,24 @@ function renderRuecken(){
           <div><label>Akzentfarbe</label><input id="sp_accent" type="color" value="${spineState.accent}" style="height:42px"></div></div>
       </div>
       <div class="card" style="margin-top:14px">
-        <h3>Logo (optional)</h3>
-        <div class="field"><label>Bild hochladen</label><input type="file" id="sp_logofile" accept="image/*" onchange="spLogo(this)"></div>
-        <div class="field"><label><input type="checkbox" id="sp_uselogo" ${spineState.useLogo?'checked':''} style="width:auto;margin-right:6px"> Logo statt Firmenname oben zeigen</label></div>
+        <h3>Kopfbereich</h3>
+        <div class="field"><label>Was soll oben auf dem Rücken stehen?</label>
+          <div class="seg" id="sp_headseg" style="width:100%;flex-wrap:wrap">
+            <button type="button" data-m="name" onclick="spSetHead('name')">Firmenname</button>
+            <button type="button" data-m="icon" onclick="spSetHead('icon')">Symbol</button>
+            <button type="button" data-m="logo" onclick="spSetHead('logo')">Eigenes Logo</button>
+            <button type="button" data-m="none" onclick="spSetHead('none')">Nichts</button>
+          </div>
+        </div>
+        <div id="sp_iconwrap" style="display:none">
+          <div class="field"><label>Symbol wählen</label>
+            <div id="sp_iconpal" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px"></div>
+          </div>
+        </div>
+        <div id="sp_logowrap" style="display:none">
+          <div class="field"><label>Logo hochladen (PNG/JPG/SVG)</label><input type="file" id="sp_logofile" accept="image/*" onchange="spLogo(this)"></div>
+          <div id="sp_logoprev" style="margin-top:6px"></div>
+        </div>
       </div>
       <div class="hintbar" style="margin-top:14px">Drucken → ausschneiden entlang der gestrichelten Linie → in den Ordnerrücken einstecken. Die Breite passt zu Standard-Aktenordnern (schmal/breit).</div>
     </div>
@@ -921,14 +961,41 @@ function renderRuecken(){
   document.getElementById('sp_width').value=spineState.width;
   document.getElementById('sp_length').value=spineState.length;
   document.getElementById('sp_band').value=spineState.bandTop?'1':'0';
-  ['sp_title','sp_sub','sp_width','sp_length','sp_count','sp_fs','sp_band','sp_accent','sp_uselogo'].forEach(id=>{
-    const ev=(id==='sp_width'||id==='sp_length'||id==='sp_band'||id==='sp_uselogo')?'change':'input';
+  ['sp_title','sp_sub','sp_width','sp_length','sp_count','sp_fs','sp_band','sp_accent'].forEach(id=>{
+    const ev=(id==='sp_width'||id==='sp_length'||id==='sp_band')?'change':'input';
     document.getElementById(id).addEventListener(ev,syncSpine);
   });
+  spSetHead(spineState.headMode,true);
   drawSpine();
   wireFocusZoom('spinePaper');
 }
-function spLogo(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{spineState.logo=e.target.result;document.getElementById('sp_uselogo').checked=true;syncSpine()};r.readAsDataURL(f)}
+function spSetHead(m,silent){
+  spineState.headMode=m;
+  document.querySelectorAll('#sp_headseg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  document.getElementById('sp_iconwrap').style.display = m==='icon'?'':'none';
+  document.getElementById('sp_logowrap').style.display = m==='logo'?'':'none';
+  if(m==='icon') drawIconPalette();
+  if(m==='logo') spDrawLogoPrev();
+  if(!silent) drawSpine();
+}
+function drawIconPalette(){
+  const pal=document.getElementById('sp_iconpal');
+  pal.innerHTML=Object.entries(ICONS).map(([k,v])=>{
+    const on=spineState.icon===k;
+    return `<button type="button" title="${esc(v.n)}" onclick="spPickIcon('${k}')"
+      style="aspect-ratio:1;display:grid;place-items:center;border:1px solid ${on?'var(--brass)':'var(--line)'};
+      background:${on?'rgba(201,162,75,.18)':'#10161b'};border-radius:8px;padding:7px">
+      <svg viewBox="0 0 24 24" style="width:100%;height:100%"><path d="${v.d}" fill="${on?'var(--brass-hi)':'#8593a0'}"/></svg>
+    </button>`;
+  }).join('');
+}
+function spPickIcon(k){spineState.icon=k;drawIconPalette();drawSpine()}
+function spDrawLogoPrev(){
+  const el=document.getElementById('sp_logoprev');if(!el)return;
+  el.innerHTML=spineState.logo?`<img src="${spineState.logo}" style="height:40px;background:#fff;padding:4px;border-radius:6px">`
+    :'<span style="color:var(--muted);font-size:12px">Noch kein Logo hochgeladen.</span>';
+}
+function spLogo(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{spineState.logo=e.target.result;spDrawLogoPrev();drawSpine()};r.readAsDataURL(f)}
 function syncSpine(){
   spineState.title=document.getElementById('sp_title').value;
   spineState.sub=document.getElementById('sp_sub').value;
@@ -938,13 +1005,15 @@ function syncSpine(){
   spineState.fontSize=+document.getElementById('sp_fs').value;
   spineState.bandTop=document.getElementById('sp_band').value==='1';
   spineState.accent=document.getElementById('sp_accent').value;
-  spineState.useLogo=document.getElementById('sp_uselogo').checked;
   drawSpine();
 }
 function drawSpine(){
   const p=activeProfile();const s=spineState;
-  const topHtml=(s.useLogo&&s.logo)?`<div class="s-logo"><img src="${s.logo}"></div>`
-    :(p?`<div class="s-logo"><div class="txt">${esc(p.name)}</div></div>`:'');
+  let topHtml='';
+  if(s.headMode==='logo' && s.logo) topHtml=`<div class="s-logo"><img src="${s.logo}"></div>`;
+  else if(s.headMode==='icon') topHtml=`<div class="s-logo" style="display:flex;justify-content:center">${iconSvg(s.icon,s.accent,Math.min(14,s.width*0.3))}</div>`;
+  else if(s.headMode==='name' && p) topHtml=`<div class="s-logo"><div class="txt">${esc(p.name)}</div></div>`;
+  // headMode==='none' -> topHtml bleibt leer
   let spines='';
   const longSpine = s.length>=250;
   for(let i=0;i<s.count;i++){
@@ -1335,11 +1404,20 @@ function printDoc(id){
   const w=window.open('','_print','width=900,height=1200');
   const css=[...document.querySelectorAll('style')].map(s=>s.innerHTML).join('\n');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Drucken</title><style>${css}
-    html,body{background:#fff;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+    html,body{background:#fff;margin:0;padding:0;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
     *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
     @page{margin:0;size:A4}
-    .a4,.spine-sheet,.label-sheet{box-shadow:none !important;margin:0 auto;transform:none !important}
-    .a4{transform:none !important}
+    /* Rücken/Aufkleber/Register: exakt A4 hoch, kein Überlauf -> keine leere Folgeseite */
+    .spine-sheet,.label-sheet,.reg-sheet{
+      box-shadow:none !important;margin:0 auto !important;transform:none !important;
+      width:210mm !important;height:297mm !important;min-height:0 !important;
+      overflow:hidden !important;box-sizing:border-box !important;
+    }
+    /* Brief: Schatten weg, aber mehrseitig erlaubt (langer Text) */
+    .a4{box-shadow:none !important;margin:0 auto !important;transform:none !important}
+    /* mehrseitige Dokumente (Register): jedes Blatt auf eigene Seite, letztes ohne Umbruch danach */
+    .reg-sheet{page-break-after:always;break-after:page}
+    .reg-sheet:last-child{page-break-after:auto;break-after:auto}
     </style></head>
     <body>${node.innerHTML}</body></html>`);
   w.document.close();
